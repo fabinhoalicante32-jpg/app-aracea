@@ -2,162 +2,159 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>ARACEA – Asociación de Rescate Animal</title>
+<title>ARACEA – Gestión de Lotería</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{margin:0;font-family:Arial;background:#121212;color:white}
-header{background:#ff7a00;padding:12px;text-align:center;font-size:18px;font-weight:bold}
+body{margin:0;font-family:Arial;background:#111;color:#fff}
+header{background:#ff7a00;padding:15px;text-align:center;font-weight:bold}
 .container{padding:15px}
-.card{background:#1e1e1e;padding:12px;border-radius:8px;margin-bottom:10px}
-button{width:100%;padding:12px;margin-top:10px;background:#ff7a00;border:none;color:white;font-size:16px;border-radius:8px}
-input{width:100%;padding:10px;margin-top:8px;border-radius:6px;border:none}
+.card{background:#1e1e1e;padding:12px;margin-bottom:10px;border-radius:8px}
+button{width:100%;padding:12px;margin:5px 0;background:#ff7a00;color:#000;border:none;border-radius:6px;font-weight:bold}
+input,select{width:100%;padding:10px;margin:5px 0;border-radius:6px;border:none}
 .hidden{display:none}
-.small{font-size:14px;color:#ccc}
+.small{font-size:13px;color:#ccc}
 </style>
 </head>
 <body>
 
 <header>ARACEA – Asociación de Rescate Animal</header>
+<div class="container">
 
-<div class="container" id="typesView">
-<h3>Tipos de Lotería</h3>
-<div id="typesList"></div>
+<!-- VISTA TIPOS -->
+<div id="typesView">
+<h2>Tipos de Lotería</h2>
+<button onclick="openYears('Navidad')">Navidad</button>
+<button onclick="openYears('Niño')">Niño</button>
+<button onclick="openYears('Semanal')">Semanal</button>
+<button onclick="openYears('Mensual')">Mensual</button>
+<button onclick="showHistory()">📊 Historial Global</button>
 </div>
 
-<div class="container hidden" id="yearsView">
-<h3 id="yearsTitle"></h3>
+<!-- VISTA AÑOS -->
+<div id="yearsView" class="hidden">
+<h2 id="typeTitle"></h2>
+<input type="number" id="newYear" placeholder="Ej: 2026">
+<button onclick="addYear()">➕ Añadir Año</button>
 <div id="yearsList"></div>
-<input id="newYear" type="number" placeholder="Añadir nuevo año">
-<button onclick="addYear()">➕ Añadir año</button>
-<button onclick="backTypes()">⬅️ Volver</button>
+<button onclick="backTypes()">⬅ Volver</button>
 </div>
 
-<div class="container hidden" id="campaignView">
-<h3 id="campTitle"></h3>
-<button onclick="showAddSale()">➕ Añadir venta</button>
-<button onclick="showHistory()">📜 Historial</button>
-<button onclick="showSummary()">📊 Resumen</button>
-<button onclick="backYears()">⬅️ Volver</button>
+<!-- VISTA CAMPAÑA -->
+<div id="campaignView" class="hidden">
+<h2 id="campaignTitle"></h2>
+<input id="numDecimos" placeholder="Número de décimos">
+<input type="number" id="cantidad" placeholder="Cantidad">
+<input type="number" id="precio" placeholder="Precio por décimo">
+<button onclick="addEntry()">Registrar Movimiento</button>
+<button onclick="closeCampaign()">Cerrar Campaña</button>
+<div id="entriesList"></div>
+<button onclick="backYears()">⬅ Volver</button>
 </div>
 
-<div class="container hidden" id="saleView">
-<h3>Nueva venta</h3>
-<input id="saleName" placeholder="Nombre">
-<input id="saleEnt" type="number" placeholder="Décimos entregados">
-<input id="salePag" type="number" placeholder="Décimos pagados">
-<button onclick="saveSale()">Guardar</button>
-<button onclick="backCampaign()">Cancelar</button>
-</div>
-
-<div class="container hidden" id="historyView">
-<h3>Historial</h3>
+<!-- HISTORIAL -->
+<div id="historyView" class="hidden">
+<h2>Historial Global</h2>
 <div id="historyList"></div>
-<button onclick="backCampaign()">Volver</button>
+<button onclick="backTypes()">⬅ Volver</button>
 </div>
 
-<div class="container hidden" id="summaryView">
-<h3>Resumen</h3>
-<div id="summaryData"></div>
-<button onclick="backCampaign()">Volver</button>
 </div>
 
 <script>
-let data={
-types:{
-"Navidad":{years:{2025:[],2026:[]}},
-"Niño":{years:{2025:[],2026:[]}},
-"Semanal":{years:{2025:[],2026:[]}},
-"Mensual":{years:{2025:[],2026:[]}}
-}
-};
+let data = JSON.parse(localStorage.getItem("araceaData")) || {types:{}};
+let currentType="",currentYear="";
 
-let currentType=null,currentYear=null;
-
-function show(id){
-["typesView","yearsView","campaignView","saleView","historyView","summaryView"]
-.forEach(x=>document.getElementById(x).classList.add("hidden"));
-document.getElementById(id).classList.remove("hidden");
-}
-
-function loadTypes(){
-let list=document.getElementById("typesList");
-list.innerHTML="";
-Object.keys(data.types).forEach(t=>{
-let d=document.createElement("div");
-d.className="card";
-d.innerText=t;
-d.onclick=()=>openYears(t);
-list.appendChild(d);
-});
-}
+function save(){localStorage.setItem("araceaData",JSON.stringify(data));}
 
 function openYears(type){
-currentType=type;
-yearsTitle.innerText=type+" - Años";
-let list=document.getElementById("yearsList");
-list.innerHTML="";
-Object.keys(data.types[type].years).forEach(y=>{
-let d=document.createElement("div");
-d.className="card";
-d.innerText=y;
-d.onclick=()=>openCampaign(y);
-list.appendChild(d);
-});
-show("yearsView");
+ currentType=type;
+ if(!data.types[type]) data.types[type]={years:{}};
+ document.getElementById("typesView").classList.add("hidden");
+ document.getElementById("yearsView").classList.remove("hidden");
+ document.getElementById("typeTitle").innerText="Años – "+type;
+ loadYears();
+}
+
+function backTypes(){
+ document.getElementById("typesView").classList.remove("hidden");
+ document.getElementById("yearsView").classList.add("hidden");
+ document.getElementById("campaignView").classList.add("hidden");
+ document.getElementById("historyView").classList.add("hidden");
+}
+
+function loadYears(){
+ let div=document.getElementById("yearsList");
+ div.innerHTML="";
+ Object.keys(data.types[currentType].years).forEach(y=>{
+  div.innerHTML+=`<button onclick="openCampaign('${y}')">${y}</button>`;
+ });
 }
 
 function addYear(){
-let y=newYear.value;
-if(!y)return alert("Pon un año");
-if(data.types[currentType].years[y])return alert("Ese año ya existe");
-data.types[currentType].years[y]=[];
-newYear.value="";
-openYears(currentType);
+ let y=document.getElementById("newYear").value;
+ if(!y)return;
+ data.types[currentType].years[y]={entries:[],closed:false};
+ save();
+ loadYears();
+ document.getElementById("newYear").value="";
 }
 
 function openCampaign(year){
-currentYear=year;
-campTitle.innerText=currentType+" "+year;
-show("campaignView");
+ currentYear=year;
+ document.getElementById("yearsView").classList.add("hidden");
+ document.getElementById("campaignView").classList.remove("hidden");
+ document.getElementById("campaignTitle").innerText=currentType+" "+year;
+ showEntries();
 }
 
-function showAddSale(){show("saleView")}
-function backTypes(){show("typesView")}
-function backYears(){show("yearsView")}
-function backCampaign(){show("campaignView")}
+function backYears(){
+ document.getElementById("campaignView").classList.add("hidden");
+ document.getElementById("yearsView").classList.remove("hidden");
+}
 
-function saveSale(){
-let n=saleName.value.trim(),e=parseInt(saleEnt.value),p=parseInt(salePag.value);
-if(!n||isNaN(e)||isNaN(p))return alert("Rellena todo");
-data.types[currentType].years[currentYear].push({n,e,p});
-saleName.value="";saleEnt.value="";salePag.value="";
-backCampaign();
+function addEntry(){
+ let n=document.getElementById("numDecimos").value;
+ let c=parseInt(document.getElementById("cantidad").value);
+ let p=parseFloat(document.getElementById("precio").value);
+ if(!n||!c||!p)return alert("Faltan datos");
+ data.types[currentType].years[currentYear].entries.push({n,c,p});
+ save();
+ showEntries();
+ document.getElementById("numDecimos").value="";
+ document.getElementById("cantidad").value="";
+ document.getElementById("precio").value="";
+}
+
+function showEntries(){
+ let list=document.getElementById("entriesList");
+ list.innerHTML="";
+ let total=0;
+ data.types[currentType].years[currentYear].entries.forEach(e=>{
+  total+=e.c*e.p;
+  list.innerHTML+=`<div class="card">${e.n} | ${e.c} décimos | ${e.p}€</div>`;
+ });
+ list.innerHTML+=`<div class="card"><b>Total: ${total}€</b></div>`;
+}
+
+function closeCampaign(){
+ data.types[currentType].years[currentYear].closed=true;
+ save();
+ alert("Campaña cerrada y guardada en historial");
 }
 
 function showHistory(){
-let h=document.getElementById("historyList");
-h.innerHTML="";
-data.types[currentType].years[currentYear].forEach(s=>{
-let d=document.createElement("div");
-d.className="card";
-d.innerHTML=`<b>${s.n}</b><div class="small">Ent: ${s.e} | Pag: ${s.p} | Debe: ${s.e-s.p}</div>`;
-h.appendChild(d);
-});
-show("historyView");
+ document.getElementById("typesView").classList.add("hidden");
+ document.getElementById("historyView").classList.remove("hidden");
+ let h=document.getElementById("historyList");
+ h.innerHTML="";
+ Object.keys(data.types).forEach(t=>{
+  Object.keys(data.types[t].years).forEach(y=>{
+   let total=0;
+   data.types[t].years[y].entries.forEach(e=>total+=e.c*e.p);
+   h.innerHTML+=`<div class="card">${t} ${y} → ${total}€</div>`;
+  });
+ });
 }
-
-function showSummary(){
-let v=0,p=0;
-data.types[currentType].years[currentYear].forEach(s=>{v+=s.e;p+=s.p});
-summaryData.innerHTML=`
-<div class="card">🎟️ Vendidos: ${v}</div>
-<div class="card">💶 Pagados: ${p}</div>
-<div class="card">⚠️ Pendientes: ${v-p}</div>
-<div class="card">🟢 Beneficio ARACEA: ${v*3} €</div>`;
-show("summaryView");
-}
-
-loadTypes();
 </script>
 </body>
 </html>
