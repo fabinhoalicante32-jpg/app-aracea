@@ -11,9 +11,10 @@ header{background:#ff7a00;padding:10px;text-align:center;font-weight:bold}
 .container{padding:15px}
 button{width:100%;padding:12px;margin:6px 0;border:none;border-radius:8px;background:#ff7a00;color:#000;font-weight:bold}
 .card{background:#1e1e1e;padding:12px;border-radius:10px;margin-bottom:12px}
-input,select,textarea{width:100%;padding:10px;margin-top:6px;border-radius:6px;border:none}
+input,select{width:100%;padding:10px;margin-top:6px;border-radius:6px;border:none}
 .hidden{display:none}
 hr{border:1px solid #333}
+.small{font-size:14px;color:#ccc}
 </style>
 </head>
 <body>
@@ -24,130 +25,137 @@ hr{border:1px solid #333}
 
 <div id="home">
 <img src="20220603_103609.png" class="logo">
-<button onclick="openCamp('Navidad')">🎫 Navidad</button>
-<button onclick="openCamp('El Niño')">🎫 El Niño</button>
-<button onclick="openCamp('Mensual')">📅 Mensual</button>
-<button onclick="openCamp('Semanal')">📆 Semanal</button>
+<button onclick="openCamp('Navidad')">🎄 Navidad</button>
+<button onclick="openCamp('El Niño')">🐫 El Niño</button>
+<button onclick="openCamp('Mensual')">🎫 Mensual</button>
+<button onclick="openCamp('Semanal')">🎫 Semanal</button>
 </div>
 
 <div id="campView" class="hidden">
-<h3 id="campTitle"></h3>
 
 <div class="card">
-<b>⚙️ Configuración</b>
-<input type="number" id="beneficio" placeholder="Beneficio por décimo (€)" value="3">
-<button onclick="saveConfig()">Guardar</button>
+⚙️ <b>Configuración</b>
+<input type="number" id="precioDecimo" placeholder="Precio por décimo (€)">
+<input type="number" id="beneficioDecimo" placeholder="Beneficio ARACEA por décimo (€)">
+<button onclick="guardarConfig()">Guardar configuración</button>
 </div>
 
 <div class="card">
-<b>🏛️ Casa de Lotería</b>
-<input type="number" id="casaDecimos" placeholder="Décimos recogidos (+) o devueltos (-)">
-<input type="number" id="casaDinero" placeholder="Dinero entregado a la casa (€)">
-<button onclick="movCasa()">Registrar movimiento</button>
-<div id="estadoCasa"></div>
+🍀 <b>Lotería Geles</b>
+<input type="number" id="decimosCasa" placeholder="Décimos recogidos">
+<input type="number" id="decimosDevueltosCasa" placeholder="Décimos devueltos a la casa">
+<input type="number" id="dineroPagadoCasa" placeholder="Dinero pagado a la casa (€)">
+<button onclick="guardarCasa()">Guardar datos casa</button>
 </div>
 
 <div class="card">
-<b>🧍 Venta</b>
-<input id="nombre" placeholder="Nombre comprador">
-<input type="number" id="cantidad" placeholder="Cantidad de décimos">
-<input type="number" id="precio" placeholder="Precio por décimo (€)">
-<select id="pago">
+🧑 <b>Persona</b>
+<input id="nombre" placeholder="Nombre persona">
+<input type="number" id="entregados" placeholder="Décimos entregados">
+<input type="number" id="devueltos" placeholder="Décimos devueltos">
+<input type="number" id="pagados" placeholder="Décimos pagados">
+<select id="formaPago">
 <option>Efectivo</option>
 <option>Bizum</option>
 <option>Transferencia</option>
 </select>
-<input id="obs" placeholder="Observaciones">
-<button onclick="addVenta()">Guardar venta</button>
+<button onclick="guardarPersona()">Guardar persona</button>
 </div>
 
 <div class="card">
-<b>📜 Historial ventas</b>
-<div id="ventasList"></div>
+📜 <b>Historial</b>
+<div id="listaPersonas"></div>
 </div>
 
 <div class="card">
-<b>💰 Estado actual</b>
+🗒️ <b>Estado actual</b>
 <div id="estado"></div>
 </div>
 
-<button onclick="backHome()">⬅ Volver</button>
-</div>
+<button onclick="volver()">⬅ Volver</button>
 
+</div>
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("aracea_multi")) || {};
-let current = "";
+let data=JSON.parse(localStorage.getItem("araceaFinal"))||{};
+let actual="";
 
-function save(){localStorage.setItem("aracea_multi",JSON.stringify(data));}
+function save(){localStorage.setItem("araceaFinal",JSON.stringify(data));}
 
-function openCamp(name){
- current=name;
- if(!data[name]) data[name]={ventas:[],casa:{decimos:0,dinero:0},beneficio:3};
- home.classList.add("hidden");
- campView.classList.remove("hidden");
- campTitle.innerText=name;
- beneficio.value=data[name].beneficio;
- render();
+function openCamp(c){
+actual=c;
+if(!data[c]){
+data[c]={config:{precio:23,beneficio:3},casa:{recogidos:0,devueltos:0,pagado:0},personas:[]};
+}
+home.classList.add("hidden");
+campView.classList.remove("hidden");
+precioDecimo.value=data[c].config.precio;
+beneficioDecimo.value=data[c].config.beneficio;
+render();
 }
 
-function backHome(){
- campView.classList.add("hidden");
- home.classList.remove("hidden");
+function volver(){
+campView.classList.add("hidden");
+home.classList.remove("hidden");
 }
 
-function saveConfig(){
- data[current].beneficio=Number(beneficio.value);
- save();
- render();
+function guardarConfig(){
+data[actual].config.precio=Number(precioDecimo.value);
+data[actual].config.beneficio=Number(beneficioDecimo.value);
+save();
+render();
 }
 
-function movCasa(){
- data[current].casa.decimos+=Number(casaDecimos.value||0);
- data[current].casa.dinero+=Number(casaDinero.value||0);
- casaDecimos.value="";
- casaDinero.value="";
- save();
- render();
+function guardarCasa(){
+let casa=data[actual].casa;
+casa.recogidos=Number(decimosCasa.value||0);
+casa.devueltos=Number(decimosDevueltosCasa.value||0);
+casa.pagado=Number(dineroPagadoCasa.value||0);
+save();
+render();
 }
 
-function addVenta(){
- let v={
-  n:nombre.value,
-  c:Number(cantidad.value),
-  p:Number(precio.value),
-  f:pago.value,
-  o:obs.value
- };
- if(!v.n||!v.c||!v.p) return alert("Faltan datos");
- data[current].ventas.push(v);
- nombre.value="";cantidad.value="";precio.value="";obs.value="";
- save();
- render();
+function guardarPersona(){
+let p={
+n:nombre.value,
+e:Number(entregados.value||0),
+d:Number(devueltos.value||0),
+p:Number(pagados.value||0),
+f:formaPago.value
+};
+if(!p.n)return alert("Nombre obligatorio");
+data[actual].personas.push(p);
+nombre.value=entregados.value=devueltos.value=pagados.value="";
+save();
+render();
 }
 
 function render(){
- let camp=data[current];
- let total=0,vendidos=0;
- ventasList.innerHTML="";
- camp.ventas.forEach((v,i)=>{
-  total+=v.c*v.p;
-  vendidos+=v.c;
-  ventasList.innerHTML+=`${v.n} - ${v.c} décimos - ${v.c*v.p}€ (${v.f})<br>${v.o}<hr>`;
- });
- let benef=vendidos*camp.beneficio;
- let dineroEnMano=total-camp.casa.dinero;
- estado.innerHTML=`
- Total vendido: ${total}€<br>
- Décimos vendidos: ${vendidos}<br>
- Beneficio ARACEA: ${benef}€<br>
- Dinero en mano: ${dineroEnMano}€<br>
- Décimos disponibles: ${camp.casa.decimos-vendidos}
- `;
- estadoCasa.innerHTML=`Décimos en stock: ${camp.casa.decimos} | Dinero entregado: ${camp.casa.dinero}€`;
-}
+let camp=data[actual];
+let lista="";
+let totalVendidos=0;
+camp.personas.forEach((p,i)=>{
+let vendidos=p.p;
+totalVendidos+=vendidos;
+lista+=`${p.n} - Ent:${p.e} Dev:${p.d} Pag:${p.p} (${p.f})<hr>`;
+});
+listaPersonas.innerHTML=lista||"Sin personas aún";
 
+let totalCobrado=totalVendidos*camp.config.precio;
+let beneficio=totalVendidos*camp.config.beneficio;
+let paraCasa=totalCobrado-beneficio;
+let stock=camp.casa.recogidos-totalVendidos+camp.casa.devueltos;
+
+estado.innerHTML=`
+Total vendido: ${totalCobrado}€<br>
+Décimos vendidos: ${totalVendidos}<br>
+Beneficio ARACEA: ${beneficio}€<br>
+🍀 Lotería Geles: ${paraCasa}€<br>
+Décimos disponibles: ${stock}
+`;
+}
 </script>
+
 </body>
 </html>
