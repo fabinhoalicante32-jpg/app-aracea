@@ -1,349 +1,188 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
 <title>Parking</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-  body{
-    font-family: Arial, sans-serif;
-    background:#f4f6f9;
-    margin:0;
-    padding:12px;
-  }
-  h1{
-    text-align:center;
-    font-size:22px;
-    margin:6px 0 4px 0;
-  }
-  .date-top{
-    text-align:center;
-    font-size:13px;
-    color:#777;
-    margin-bottom:12px;
-  }
-  .card{
-    background:#fff;
-    padding:14px;
-    border-radius:14px;
-    margin-bottom:14px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.05);
-  }
-  button, input{
-    width:100%;
-    box-sizing:border-box;
-    padding:10px;
-    margin:6px 0;
-    border-radius:10px;
-    border:1px solid #ddd;
-    font-size:14px;
-  }
-  button{
-    background:#004481;
-    color:#fff;
-    border:none;
-    font-weight:bold;
-    cursor:pointer;
-  }
-  button:disabled{
-    opacity:0.6;
-    cursor:not-allowed;
-  }
-  .btn-row{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-  }
-  .btn-row button{
-    width:auto;
-    flex:1 1 160px;
-    padding:10px 8px;
-  }
-  .danger{
-    background:#b00020;
-  }
-  .soft{
-    background:#e6f0fa;
-    color:#0b2a55;
-    border:1px solid rgba(0,0,0,0.08);
-  }
-  .big{
-    padding:14px;
-    font-size:16px;
-    border-radius:14px;
-  }
-  .line{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    padding:7px 0;
-    border-bottom:1px solid #f0f0f0;
-    font-size:14px;
-  }
-  .line:last-child{border-bottom:none;}
-  .muted{color:#666;}
-  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-  .small{
-    font-size:13px;
-    color:#666;
-  }
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f6f9;
+  margin:0;
+  padding:15px;
+  text-align:center;
+}
+
+h1{
+  margin-bottom:5px;
+}
+
+.fecha{
+  font-size:13px;
+  color:#777;
+  margin-bottom:15px;
+}
+
+.card{
+  background:white;
+  padding:15px;
+  border-radius:14px;
+  margin-bottom:15px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+
+button{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border:none;
+  border-radius:10px;
+  background:#004481;
+  color:white;
+  font-weight:bold;
+  font-size:14px;
+}
+
+button:hover{
+  opacity:0.9;
+}
+
+.info{
+  margin-top:10px;
+  font-size:14px;
+  color:#444;
+  word-break:break-word;
+}
+
+.muted{
+  color:#888;
+  font-size:13px;
+}
 </style>
 </head>
 <body>
 
 <h1>Parking</h1>
-<div class="date-top" id="fechaHoy"></div>
+<div class="fecha" id="fechaHoy"></div>
 
 <div class="card">
-  <strong>Mi coche</strong>
 
-  <button class="big" id="btnGuardar" onclick="guardarParking()">📍 Guardar dónde aparqué</button>
+<button onclick="guardarUbicacion()">Guardar ubicación</button>
 
-  <div class="btn-row">
-    <button id="btnAndando" class="soft" onclick="abrirMaps('w')" disabled>🚶 Ir al coche (andar)</button>
-    <button id="btnCoche" class="soft" onclick="abrirMaps('d')" disabled>🚗 Ir al coche (coche)</button>
-  </div>
+<button onclick="verUbicacion()">Ver ubicación</button>
 
-  <div style="margin-top:10px" id="estadoBox" class="small muted">
-    Sin ubicación guardada todavía.
-  </div>
+<button onclick="irAndando()">Ir andando al coche</button>
 
-  <div class="btn-row" style="margin-top:10px">
-    <button id="btnCopiar" onclick="copiarCoords()" disabled>Copiar coordenadas</button>
-    <button id="btnBorrar" class="danger" onclick="borrarParking()" disabled>Borrar ubicación</button>
-  </div>
-</div>
+<button onclick="borrarUbicacion()">Borrar ubicación</button>
 
-<div class="card">
-  <strong>Seguridad de datos</strong>
-  <button onclick="hacerBackup()">Hacer copia de seguridad</button>
-  <input type="file" id="restaurarInput" style="display:none" onchange="restaurarBackup(event)">
-  <button onclick="document.getElementById('restaurarInput').click()">Restaurar copia</button>
-  <div class="small muted" style="margin-top:8px;">
-    La copia guarda solo esta app (ubicación + fecha + precisión).
-  </div>
+<div class="info" id="infoUbicacion"></div>
+
 </div>
 
 <script>
-/* =========================
-   LocalStorage keys (solo esta app)
-   ========================= */
-const LS = {
-  PARK: "park1_location"
-};
 
-document.getElementById("fechaHoy").textContent = new Date().toLocaleDateString("es-ES");
+/* ===== Fecha ===== */
+const hoy = new Date();
+document.getElementById("fechaHoy").textContent =
+hoy.toLocaleDateString("es-ES");
 
-/* =========================
-   Estado
-   ========================= */
-let park = null; // {lat, lon, acc, ts}
+/* ===== Estado ===== */
+let ubicacionGuardada = JSON.parse(localStorage.getItem("parking_ubicacion")) || null;
+mostrarInfo();
 
-/* =========================
-   Helpers
-   ========================= */
-function safeNum(n){
-  const x = parseFloat(n);
-  return isNaN(x) ? 0 : x;
-}
-function pad2(n){ return String(n).padStart(2,"0"); }
-function formatDT(ts){
-  const d = new Date(ts);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-function setEnabled(has){
-  document.getElementById("btnAndando").disabled = !has;
-  document.getElementById("btnCoche").disabled = !has;
-  document.getElementById("btnBorrar").disabled = !has;
-  document.getElementById("btnCopiar").disabled = !has;
-}
+/* ===== Guardar ubicación ===== */
+function guardarUbicacion(){
 
-/* =========================
-   Render
-   ========================= */
-function render(){
-  const box = document.getElementById("estadoBox");
-
-  if(!park){
-    box.innerHTML = "Sin ubicación guardada todavía.";
-    setEnabled(false);
-    return;
-  }
-
-  const acc = safeNum(park.acc);
-  const when = park.ts ? formatDT(park.ts) : "—";
-
-  box.innerHTML = `
-    <div class="line"><span class="muted">Guardado</span><span><b>${when}</b></span></div>
-    <div class="line"><span class="muted">Precisión</span><span>${acc ? (Math.round(acc) + " m") : "—"}</span></div>
-    <div class="line"><span class="muted">Coords</span><span class="mono">${park.lat.toFixed(6)}, ${park.lon.toFixed(6)}</span></div>
-  `;
-
-  setEnabled(true);
-}
-
-/* =========================
-   Guardar ubicación
-   ========================= */
-function guardarParking(){
   if(!navigator.geolocation){
-    alert("Tu navegador no soporta GPS (geolocalización).");
+    alert("Geolocalización no soportada.");
     return;
   }
 
-  const btn = document.getElementById("btnGuardar");
-  btn.disabled = true;
-  btn.textContent = "Guardando ubicación...";
+  navigator.geolocation.getCurrentPosition(function(position){
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const acc = pos.coords.accuracy;
-      const ts = Date.now();
+    ubicacionGuardada = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+      fecha: new Date().toLocaleString("es-ES")
+    };
 
-      park = {lat, lon, acc, ts};
-      localStorage.setItem(LS.PARK, JSON.stringify(park));
+    localStorage.setItem("parking_ubicacion", JSON.stringify(ubicacionGuardada));
 
-      btn.disabled = false;
-      btn.textContent = "📍 Guardar dónde aparqué";
+    mostrarInfo();
+    alert("Ubicación guardada correctamente");
 
-      // vibración (si el móvil lo permite)
-      try{ navigator.vibrate && navigator.vibrate(60); }catch(e){}
+  }, function(){
+    alert("No se pudo obtener la ubicación. Asegúrate de dar permiso.");
+  });
 
-      render();
-      alert("Ubicación guardada ✅");
-    },
-    (err) => {
-      btn.disabled = false;
-      btn.textContent = "📍 Guardar dónde aparqué";
-
-      let msg = "No se pudo obtener la ubicación.";
-      if(err && err.code === 1) msg = "Permiso denegado. Activa la ubicación para Chrome y vuelve a probar.";
-      if(err && err.code === 2) msg = "Ubicación no disponible. Prueba en un sitio con mejor cobertura GPS.";
-      if(err && err.code === 3) msg = "Se agotó el tiempo. Vuelve a intentar.";
-
-      alert(msg);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0
-    }
-  );
 }
 
-/* =========================
-   Abrir Google Maps con ruta
-   ========================= */
-function abrirMaps(mode){
-  if(!park) return;
+/* ===== Ver ubicación ===== */
+function verUbicacion(){
 
-  // Mode: w (walking), d (driving)
-  const travel = (mode === "w") ? "walking" : "driving";
+  if(!ubicacionGuardada){
+    alert("No hay ubicación guardada.");
+    return;
+  }
 
-  const dest = `${park.lat},${park.lon}`;
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=${travel}`;
+  const lat = ubicacionGuardada.lat;
+  const lng = ubicacionGuardada.lng;
 
+  alert(`Tu coche está en:\n${lat}, ${lng}`);
+
+  const url = `https://www.google.com/maps?q=${lat},${lng}`;
   window.open(url, "_blank");
 }
 
-/* =========================
-   Copiar coords
-   ========================= */
-async function copiarCoords(){
-  if(!park) return;
+/* ===== Ir andando ===== */
+function irAndando(){
 
-  const txt = `${park.lat.toFixed(6)}, ${park.lon.toFixed(6)}`;
-  try{
-    await navigator.clipboard.writeText(txt);
-    alert("Coordenadas copiadas ✅");
-  }catch(e){
-    // fallback
-    const tmp = document.createElement("textarea");
-    tmp.value = txt;
-    document.body.appendChild(tmp);
-    tmp.select();
-    document.execCommand("copy");
-    tmp.remove();
-    alert("Coordenadas copiadas ✅");
+  if(!ubicacionGuardada){
+    alert("No hay ubicación guardada.");
+    return;
+  }
+
+  const lat = ubicacionGuardada.lat;
+  const lng = ubicacionGuardada.lng;
+
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+  window.open(url, "_blank");
+}
+
+/* ===== Borrar ubicación ===== */
+function borrarUbicacion(){
+
+  if(!ubicacionGuardada){
+    alert("No hay ubicación guardada.");
+    return;
+  }
+
+  if(confirm("¿Seguro que quieres borrar la ubicación?")){
+    ubicacionGuardada = null;
+    localStorage.removeItem("parking_ubicacion");
+    mostrarInfo();
+    alert("Ubicación borrada.");
   }
 }
 
-/* =========================
-   Borrar
-   ========================= */
-function borrarParking(){
-  if(!park) return;
-  if(!confirm("¿Borrar la ubicación guardada?")) return;
+/* ===== Mostrar info ===== */
+function mostrarInfo(){
 
-  park = null;
-  localStorage.removeItem(LS.PARK);
-  render();
-  alert("Ubicación borrada");
+  const info = document.getElementById("infoUbicacion");
+
+  if(!ubicacionGuardada){
+    info.innerHTML = "<span class='muted'>No hay ubicación guardada.</span>";
+    return;
+  }
+
+  info.innerHTML = `
+    📍 Lat: ${ubicacionGuardada.lat.toFixed(6)}<br>
+    📍 Lng: ${ubicacionGuardada.lng.toFixed(6)}<br>
+    🕒 Guardado: ${ubicacionGuardada.fecha}
+  `;
 }
 
-/* =========================
-   Backup / Restaurar
-   ========================= */
-function hacerBackup(){
-  const data = {
-    park1_location: park
-  };
-  const blob = new Blob([JSON.stringify(data)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "parking_backup.json";
-  a.click();
-  URL.revokeObjectURL(url);
-  alert("Copia de seguridad creada");
-}
-
-function restaurarBackup(event){
-  const file = event.target.files[0];
-  if(!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const data = JSON.parse(e.target.result);
-      const p = data.park1_location;
-
-      if(p && typeof p.lat === "number" && typeof p.lon === "number"){
-        park = {
-          lat: p.lat,
-          lon: p.lon,
-          acc: safeNum(p.acc),
-          ts: p.ts || Date.now()
-        };
-        localStorage.setItem(LS.PARK, JSON.stringify(park));
-        render();
-        alert("Copia restaurada correctamente ✅");
-      }else{
-        alert("Archivo válido, pero no contiene ubicación.");
-      }
-    }catch(err){
-      alert("Archivo no válido");
-    }finally{
-      event.target.value = "";
-    }
-  };
-  reader.readAsText(file);
-}
-
-/* =========================
-   Init
-   ========================= */
-(function init(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(LS.PARK));
-    if(saved && typeof saved.lat === "number" && typeof saved.lon === "number"){
-      park = saved;
-    }
-  }catch(e){}
-  render();
-})();
 </script>
 
 </body>
