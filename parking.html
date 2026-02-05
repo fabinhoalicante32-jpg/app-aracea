@@ -100,8 +100,8 @@
   <button class="big" id="btnGuardar" onclick="guardarParking()">📍 Guardar dónde aparqué</button>
 
   <div class="btn-row">
-    <button id="btnAndando" class="soft" onclick="abrirRutaAndando()" disabled>🚶 Ir al coche (andar)</button>
-    <button id="btnVer" class="soft" onclick="abrirPuntoEnMaps()" disabled>📍 Dónde está mi coche</button>
+    <button id="btnAndando" class="soft" onclick="abrirMaps('w')" disabled>🚶 Ir al coche (andar)</button>
+    <button id="btnCoche" class="soft" onclick="abrirMaps('d')" disabled>🚗 Ir al coche (coche)</button>
   </div>
 
   <div style="margin-top:10px" id="estadoBox" class="small muted">
@@ -153,9 +153,13 @@ function formatDT(ts){
 }
 function setEnabled(has){
   document.getElementById("btnAndando").disabled = !has;
-  document.getElementById("btnVer").disabled = !has;
+  document.getElementById("btnCoche").disabled = !has;
   document.getElementById("btnBorrar").disabled = !has;
   document.getElementById("btnCopiar").disabled = !has;
+}
+function clearHash(){
+  // quita #save / #walk / etc para que al refrescar no repita
+  history.replaceState(null, "", location.pathname + location.search);
 }
 
 /* =========================
@@ -212,6 +216,9 @@ function guardarParking(){
 
       render();
       alert("Ubicación guardada ✅");
+
+      // ✅ si venimos de #save, quitamos el hash
+      if(location.hash) clearHash();
     },
     (err) => {
       btn.disabled = false;
@@ -223,6 +230,8 @@ function guardarParking(){
       if(err && err.code === 3) msg = "Se agotó el tiempo. Vuelve a intentar.";
 
       alert(msg);
+
+      if(location.hash) clearHash();
     },
     {
       enableHighAccuracy: true,
@@ -233,36 +242,26 @@ function guardarParking(){
 }
 
 /* =========================
-   Ir andando al coche (ruta)
+   Abrir Google Maps
    ========================= */
-function abrirRutaAndando(){
+function abrirMaps(mode){
   if(!park) return;
 
   const dest = `${park.lat},${park.lon}`;
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=walking`;
+
+  // Mode: w (walking), d (driving)
+  const travel = (mode === "w") ? "walking" : "driving";
+
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=${travel}`;
   window.open(url, "_blank");
 }
 
-/* =========================
-   Dónde está mi coche (pin en Maps)
-   ========================= */
-function abrirPuntoEnMaps(){
+/* ✅ NUEVO: Solo ver la ubicación (pin) */
+function abrirPin(){
   if(!park) return;
-
   const q = `${park.lat},${park.lon}`;
-
-  // 1) intentamos abrir Google Maps normal con búsqueda (pin)
-  const url1 = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-
-  // 2) fallback: URL directa con @lat,lon (también muestra el punto)
-  const url2 = `https://www.google.com/maps/@${park.lat},${park.lon},18z`;
-
-  // en algunos móviles window.open puede bloquearse; usamos location directamente
-  try{
-    window.location.href = url1;
-  }catch(e){
-    window.location.href = url2;
-  }
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  window.open(url, "_blank");
 }
 
 /* =========================
@@ -303,9 +302,7 @@ function borrarParking(){
    Backup / Restaurar
    ========================= */
 function hacerBackup(){
-  const data = {
-    park1_location: park
-  };
+  const data = { park1_location: park };
   const blob = new Blob([JSON.stringify(data)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -349,6 +346,44 @@ function restaurarBackup(event){
 }
 
 /* =========================
+   ✅ NUEVO: Acciones por hash
+   - #save  = guarda ubicación directo
+   - #walk  = abre Maps andando directo al coche
+   - #pin   = abre Maps con el pin (solo ver)
+   ========================= */
+function runHashAction(){
+  const h = (location.hash || "").toLowerCase();
+
+  if(h === "#save"){
+    // Directo sin preguntar: pisa encima y ya
+    guardarParking();
+    return;
+  }
+
+  if(h === "#walk"){
+    if(!park){
+      alert("No hay ubicación guardada todavía.");
+      clearHash();
+      return;
+    }
+    abrirMaps("w");
+    clearHash();
+    return;
+  }
+
+  if(h === "#pin"){
+    if(!park){
+      alert("No hay ubicación guardada todavía.");
+      clearHash();
+      return;
+    }
+    abrirPin();
+    clearHash();
+    return;
+  }
+}
+
+/* =========================
    Init
    ========================= */
 (function init(){
@@ -358,7 +393,11 @@ function restaurarBackup(event){
       park = saved;
     }
   }catch(e){}
+
   render();
+
+  // ejecuta lo que pida el hash (si viene de una rutina)
+  runHashAction();
 })();
 </script>
 
