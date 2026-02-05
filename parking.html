@@ -225,7 +225,7 @@ function verUbicacionCoche(){
   if(!park) return;
   const q = `${park.lat},${park.lon}`;
   const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  window.location.href = `google.navigation:q=${park.lat},${park.lon}`;
+  window.location.href = `geo:${park.lat},${park.lon}?q=${park.lat},${park.lon}`;
 }
 
 async function copiarCoords(){
