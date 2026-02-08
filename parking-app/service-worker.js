@@ -1,4 +1,4 @@
-const CACHE_NAME = "parking-pwa-v3";
+const CACHE_NAME = "parking-pwa-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,28 +7,21 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
 });
 
-// 🔵 Abrir Google Maps APP directamente (sin preguntar)
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  const data = event.notification.data || {};
-  const lat = data.lat;
-  const lng = data.lng;
-
-  if (typeof lat !== "number" || typeof lng !== "number") return;
-
-  const intentUrl =
-    `intent://maps.google.com/maps?daddr=${lat},${lng}` +
-    `#Intent;scheme=https;package=com.google.android.apps.maps;end`;
-
-  event.waitUntil(
-    clients.openWindow(intentUrl)
+self.addEventListener("fetch", (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
