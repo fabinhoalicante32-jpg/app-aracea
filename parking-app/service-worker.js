@@ -1,51 +1,76 @@
-const CACHE = "parking-pwa-v1";
+/* parking-app/service-worker.js */
+const CACHE_NAME = "parking-pwa-v2";
 const ASSETS = [
-  "/mis-apps/parking-app/",
-  "/mis-apps/parking-app/index.html",
-  "/mis-apps/parking-app/manifest.json",
-  "/mis-apps/parking-app/parking_192x192.png",
-  "/mis-apps/parking-app/parking_512x512.png"
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./service-worker.js",
+  "./parking_192x192.png",
+  "./parking_512x512.png"
 ];
 
 self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
+  );
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((k) => (k !== CACHE ? caches.delete(k) : null)));
-    await self.clients.claim();
-  })());
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
 });
 
-// ✅ CLAVE: sin esto, muchas veces Chrome no deja “Instalar app”
+// Cache SOLO lo que esté dentro del scope real del service worker
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith((async () => {
-    const cached = await caches.match(event.request);
-    if (cached) return cached;
-    try {
-      const res = await fetch(event.request);
-      return res;
-    } catch (e) {
-      return (await caches.match("/mis-apps/parking-app/index.html")) || Response.error();
-    }
-  })());
+  const url = new URL(event.request.url);
+
+  // scope real, ejemplo: https://xxx.github.io/mis-apps/parking-app/
+  const scope = self.registration.scope;
+
+  // si NO está dentro de la carpeta del PWA, no tocamos nada
+  if (!url.href.startsWith(scope)) return;
+
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      return (
+        cached ||
+        fetch(event.request)
+          .then((resp) => {
+            const copy = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            return resp;
+          })
+          .catch(() => cached)
+      );
+    })
+  );
 });
 
+// Click en notificación: abrir la URL guardada (Google Maps)
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil((async () => {
-    const url = (event.notification?.data?.url) || "/mis-apps/parking-app/";
-    const all = await clients.matchAll({ type: "window", includeUncontrolled: true });
+  const targetUrl = event.notification?.data?.url;
+  if (!targetUrl) return;
 
-    for (const c of all) {
-      // si ya está abierta, enfocar
-      if (c.url.includes("/mis-apps/parking-app/") && "focus" in c) return c.focus();
-    }
-    // si no, abrir
-    if (clients.openWindow) return clients.openWindow(url);
-  })());
+  event.waitUntil(
+    (async () => {
+      const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+
+      for (const c of allClients) {
+        if ("focus" in c) {
+          await c.focus();
+          // Navega a Maps desde la ventana enfocada
+          if ("navigate" in c) return c.navigate(targetUrl);
+          return;
+        }
+      }
+
+      if (clients.openWindow) await clients.openWindow(targetUrl);
+    })()
+  );
 });
