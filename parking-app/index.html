@@ -21,7 +21,7 @@
 </head>
 
 <body>
-  <!-- Tu app real (no tocamos parking.html) -->
+  <!-- Tu app real antigua (NO se toca) -->
   <iframe id="appFrame" src="../parking.html"></iframe>
 
   <script>
@@ -30,18 +30,16 @@
       navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
     }
 
-    // 2) Pedir permiso de notificaciones (solo si hace falta)
+    // 2) Permiso notificaciones (se pide solo cuando guardas aparcamiento)
     async function asegurarPermisoNoti() {
       if (!("Notification" in window)) return false;
       if (Notification.permission === "granted") return true;
       if (Notification.permission === "denied") return false;
-
       const p = await Notification.requestPermission();
       return p === "granted";
     }
 
-    // 3) Mostrar notificación (sin push, solo “local” al guardar)
-    // ✅ CAMBIO: mandamos lat/lng al service worker (NO url)
+    // 3) Mostrar notificación "Buscar coche" con coords (IMPORTANTE: lat/lng)
     async function notificarBuscarCoche(lat, lng) {
       const ok = await asegurarPermisoNoti();
       if (!ok) return;
@@ -52,11 +50,11 @@
         body: "Toca para abrir Google Maps",
         tag: "buscar-coche",
         renotify: true,
-        data: { lat, lng } // ✅ esto lo usa el service-worker.js al hacer click
+        data: { lat, lng } // ✅ ahora coincide con el service-worker
       });
     }
 
-    // 4) Leer coords desde el contenido de tu app (estadoBox suele mostrar "Coords 38.xxx, -0.xxx")
+    // 4) Leer coords desde el iframe (busca "38.123, -0.456" en estadoBox)
     function leerCoordsDesdeIframe(iframe) {
       try {
         const doc = iframe.contentDocument;
@@ -66,7 +64,6 @@
         if (!box) return null;
 
         const txt = (box.textContent || "").trim();
-        // Busca algo tipo: 38.366898, -0.493942
         const m = txt.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
         if (!m) return null;
 
@@ -75,72 +72,82 @@
         if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
         return { lat, lng };
-      } catch (e) {
+      } catch {
         return null;
       }
     }
 
-    // 5) Intentar “forzar” guardar aunque haya una ubicación previa
-    // ✅ NO tocamos parking.html: probamos funciones comunes si existen
-    function intentarBorrarAntesDeGuardar(w) {
-      try {
-        if (typeof w.borrarParking === "function") w.borrarParking();
-        if (typeof w.borrarUbicacion === "function") w.borrarUbicacion();
-        if (typeof w.limpiarParking === "function") w.limpiarParking();
-        if (typeof w.resetParking === "function") w.resetParking();
-      } catch (e) {}
-    }
-
-    // 6) Enganchar (sin tocar parking.html): “envolvemos” la función guardarParking del iframe
+    // 5) Hook SIN tocar parking.html:
+    //    - confirm() => siempre SI durante guardar
+    //    - alert() => silencioso durante guardar
+    //    Así no tienes 3 ventanas de "Aceptar"
     function engancharGuardar(iframe) {
       try {
         const w = iframe.contentWindow;
         if (!w || typeof w.guardarParking !== "function") return;
 
-        if (w.__fabioHooked) return; // evitar enganchar 2 veces
-        w.__fabioHooked = true;
+        if (w.__fabioHookedParking) return;
+        w.__fabioHookedParking = true;
 
-        const original = w.guardarParking.bind(w);
+        const originalGuardar = w.guardarParking.bind(w);
 
         w.guardarParking = async function() {
-          // ✅ primero intentamos borrar si existe algo (para evitar “ya hay una ubicación”)
-          intentarBorrarAntesDeGuardar(w);
+          // Guardamos handlers originales
+          const oldConfirm = w.confirm;
+          const oldAlert = w.alert;
 
-          // ejecuta lo de siempre (tu app guarda ubicación)
-          const r = await original();
+          // ✅ Durante el guardado: confirm siempre "sí" y alert no molesta
+          w.confirm = () => true;
+          w.alert = () => {};
 
-          // espera un pelín a que actualice estadoBox
+          let r;
+          try {
+            r = await originalGuardar();
+          } finally {
+            // Restaurar handlers originales SIEMPRE
+            w.confirm = oldConfirm;
+            w.alert = oldAlert;
+          }
+
+          // Espera un poco para que estadoBox se actualice
           setTimeout(() => {
             const coords = leerCoordsDesdeIframe(iframe);
-            if (coords) {
-              notificarBuscarCoche(coords.lat, coords.lng);
-            }
-          }, 300);
+            if (coords) notificarBuscarCoche(coords.lat, coords.lng);
+          }, 350);
 
           return r;
         };
-      } catch (e) {}
+      } catch {}
     }
 
-    // 7) Atajo “Aparcar”: si abres la PWA con #aparcar, auto-guarda
-    function autoAparcarSiToca(iframe) {
-      const shouldPark = (location.hash === "#aparcar");
-      if (!shouldPark) return;
+    // 6) Atajos de icono (long-press):
+    //    - #aparcar => guarda y crea notificación
+    //    - #buscar  => abre maps desde notificación ya existente (si hay coords)
+    function ejecutarAtajoHash(iframe) {
+      const h = (location.hash || "").toLowerCase();
 
       try {
         const w = iframe.contentWindow;
-        if (w && typeof w.guardarParking === "function") {
-          w.guardarParking();
+        if (!w) return;
+
+        if (h === "#aparcar") {
+          if (typeof w.guardarParking === "function") w.guardarParking();
         }
-      } catch (e) {}
+
+        if (h === "#buscar") {
+          const coords = leerCoordsDesdeIframe(iframe);
+          if (coords) notificarBuscarCoche(coords.lat, coords.lng);
+        }
+      } catch {}
     }
 
     const iframe = document.getElementById("appFrame");
-
     iframe.addEventListener("load", () => {
       engancharGuardar(iframe);
-      autoAparcarSiToca(iframe);
+      ejecutarAtajoHash(iframe);
     });
+
+    window.addEventListener("hashchange", () => ejecutarAtajoHash(iframe));
   </script>
 </body>
 </html>
