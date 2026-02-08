@@ -1,27 +1,28 @@
 {
   "name": "Parking",
   "short_name": "Parking",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#111111",
+  "theme_color": "#222222",
   "icons": [
-    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ],
   "shortcuts": [
     {
       "name": "Aparcar coche",
       "short_name": "Aparcar",
-      "description": "Guarda la ubicación del coche y muestra el acceso para buscarlo",
-      "url": "./index.html#aparcar"
+      "description": "Guardar la ubicación del coche",
+      "url": "./#aparcar",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Buscar coche",
       "short_name": "Buscar",
-      "description": "Abre Maps con la ubicación guardada",
-      "url": "./index.html#buscar"
+      "description": "Abrir Maps con la ubicación guardada",
+      "url": "./#buscar",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
