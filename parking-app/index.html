@@ -5,24 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Parking</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#222222" />
 
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; background:#fff; }
-    #appFrame{ width:100%; height:100%; border:0; display:block; }
+    html, body { height: 100%; margin: 0; }
+    iframe { width: 100%; height: 100%; border: 0; display: block; }
   </style>
 </head>
-
 <body>
-  <!-- 🔥 AQUÍ SOLO CAMBIA ESTA RUTA si tu app está en otro sitio -->
-  <iframe id="appFrame" src="../parking.html"></iframe>
+  <!-- Tu app real, NO se toca -->
+  <iframe src="../parking.html"></iframe>
 
   <script>
-    // Registrar service worker (para que sea instalable)
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(()=>{});
+      });
     }
   </script>
 </body>
