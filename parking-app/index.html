@@ -1,104 +1,29 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Parking</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parking</title>
 
-<link rel="manifest" href="./manifest.json" />
-<meta name="theme-color" content="#222222" />
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#222222" />
 
-<style>
-html, body { height:100%; margin:0; padding:0; background:#fff; }
-#appFrame { width:100%; height:100%; border:0; display:block; }
-</style>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; background:#fff; }
+    #appFrame{ width:100%; height:100%; border:0; display:block; }
+  </style>
 </head>
 
 <body>
+  <!-- 🔥 AQUÍ SOLO CAMBIA ESTA RUTA si tu app está en otro sitio -->
+  <iframe id="appFrame" src="../parking.html"></iframe>
 
-<iframe id="appFrame" src="../parking.html"></iframe>
-
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js");
-}
-
-async function pedirPermiso() {
-  if (!("Notification" in window)) return false;
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-  const p = await Notification.requestPermission();
-  return p === "granted";
-}
-
-function mapsIntent(lat, lng) {
-  return `intent://maps.google.com/maps?daddr=${lat},${lng}#Intent;scheme=https;package=com.google.android.apps.maps;end`;
-}
-
-async function enviarNotificacion(lat, lng) {
-  const ok = await pedirPermiso();
-  if (!ok) return;
-
-  const reg = await navigator.serviceWorker.ready;
-
-  reg.showNotification("Buscar coche", {
-    body: "Toca para abrir Google Maps",
-    tag: "buscar-coche",
-    renotify: true,
-    data: { lat, lng }
-  });
-}
-
-function leerCoords(iframe) {
-  try {
-    const doc = iframe.contentDocument;
-    const box = doc.getElementById("estadoBox");
-    if (!box) return null;
-
-    const txt = box.textContent || "";
-    const m = txt.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
-    if (!m) return null;
-
-    return {
-      lat: parseFloat(m[1]),
-      lng: parseFloat(m[2])
-    };
-  } catch(e) {
-    return null;
-  }
-}
-
-function engancharGuardar(iframe) {
-  try {
-    const w = iframe.contentWindow;
-    if (!w || typeof w.guardarParking !== "function") return;
-    if (w.__hooked) return;
-
-    w.__hooked = true;
-    const original = w.guardarParking.bind(w);
-
-    w.guardarParking = async function() {
-      const r = await original();
-
-      setTimeout(() => {
-        const coords = leerCoords(iframe);
-        if (coords) {
-          enviarNotificacion(coords.lat, coords.lng);
-        }
-      }, 300);
-
-      return r;
-    };
-
-  } catch(e){}
-}
-
-const iframe = document.getElementById("appFrame");
-
-iframe.addEventListener("load", () => {
-  engancharGuardar(iframe);
-});
-</script>
-
+  <script>
+    // Registrar service worker (para que sea instalable)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+    }
+  </script>
 </body>
 </html>
