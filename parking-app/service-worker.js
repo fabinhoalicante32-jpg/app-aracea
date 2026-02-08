@@ -1,15 +1,17 @@
-const CACHE_NAME = "parking-pwa-v1";
+const CACHE_NAME = "parking-app-pwa-v1";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./parking_192x192.png",
-  "./parking_512x512.png",
-  "./service-worker.js"
+  "./service-worker.js",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
+  );
   self.skipWaiting();
 });
 
@@ -22,12 +24,22 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Solo cachea cosas dentro de /parking-app/
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+
+  // Solo cachea lo que está dentro de /parking-app/
   if (!url.pathname.includes("/parking-app/")) return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    caches.match(event.request).then((cached) => {
+      return (
+        cached ||
+        fetch(event.request).then((resp) => {
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return resp;
+        }).catch(() => cached)
+      );
+    })
   );
 });
