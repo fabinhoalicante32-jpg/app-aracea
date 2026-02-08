@@ -1,13 +1,27 @@
 {
   "name": "Parking",
   "short_name": "Parking",
-  "start_url": "/mis-apps/parking-app/",
-  "scope": "/mis-apps/parking-app/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f2f2f2",
-  "theme_color": "#222222",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
   "icons": [
-    { "src": "./parking_192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "./parking_512x512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Aparcar coche",
+      "short_name": "Aparcar",
+      "description": "Guarda la ubicación del coche y muestra el acceso para buscarlo",
+      "url": "./index.html#aparcar"
+    },
+    {
+      "name": "Buscar coche",
+      "short_name": "Buscar",
+      "description": "Abre Maps con la ubicación guardada",
+      "url": "./index.html#buscar"
+    }
   ]
 }
