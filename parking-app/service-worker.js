@@ -1,5 +1,5 @@
 /* parking-app/service-worker.js */
-const CACHE_NAME = "parking-pwa-v1";
+const CACHE_NAME = "parking-pwa-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -28,8 +28,6 @@ self.addEventListener("activate", (event) => {
 // Cache básico (solo para tu carpeta parking-app)
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-
-  // Solo cachea lo que está dentro de /parking-app/
   if (!url.pathname.includes("/parking-app/")) return;
 
   event.respondWith(
@@ -48,7 +46,7 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// ✅ Click en notificación: abrir Google Maps APP (Android) con INTENT
+// Click en notificación: abrir Google Maps APP (mejor con geo:)
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -58,40 +56,26 @@ self.addEventListener("notificationclick", (event) => {
 
   if (typeof lat !== "number" || typeof lng !== "number") return;
 
-  // 1) Intent para abrir Google Maps app
-  const intentUrl =
-    `intent://maps.google.com/maps?daddr=${lat},${lng}` +
-    `#Intent;scheme=https;package=com.google.android.apps.maps;end`;
-
-  // 2) Fallback web (por si el intent no funciona)
+  const geoUrl = `geo:0,0?q=${encodeURIComponent(lat + "," + lng + "(Coche)")}`;
   const webUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat + "," + lng)}`;
 
   event.waitUntil(
     (async () => {
       const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
 
-      // Si ya hay una ventana abierta, la enfocamos y la mandamos al intent
+      // Si hay una ventana abierta, la enfocamos y navegamos
       for (const c of allClients) {
         if ("focus" in c) await c.focus();
         if ("navigate" in c) {
-          try {
-            await c.navigate(intentUrl);
-            return;
-          } catch (e) {
-            // si falla, intentamos web
-            try { await c.navigate(webUrl); } catch (e2) {}
-            return;
-          }
+          try { await c.navigate(geoUrl); return; }
+          catch { try { await c.navigate(webUrl); } catch {} return; }
         }
       }
 
-      // Si no hay ninguna ventana, abrimos una nueva
+      // Si no hay ventanas, abrimos nueva
       if (clients.openWindow) {
-        try {
-          await clients.openWindow(intentUrl);
-        } catch (e) {
-          await clients.openWindow(webUrl);
-        }
+        try { await clients.openWindow(geoUrl); }
+        catch { await clients.openWindow(webUrl); }
       }
     })()
   );
