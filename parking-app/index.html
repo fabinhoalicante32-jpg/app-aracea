@@ -58,7 +58,7 @@
         body: "Toca para abrir Google Maps",
         tag: "buscar-coche",      // para no duplicar mil notificaciones
         renotify: true,
-        data: { url }            // esto lo usa el service-worker al hacer click
+        data: { lat, lng }            // esto lo usa el service-worker al hacer click
       });
     }
 
