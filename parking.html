@@ -197,6 +197,15 @@
     line-height:1.4;
   }
 
+  /* ✅ texto de la tarjeta estado no seleccionable */
+  #estadoBox,
+  #estadoBox *{
+    user-select:none;
+    -webkit-user-select:none;
+    -ms-user-select:none;
+    -webkit-touch-callout:none;
+  }
+
   /* ✅ tu ajuste para que no seleccione texto */
   #coordsLine{
     user-select:none;
@@ -425,7 +434,7 @@ function render(){
       </span>
     </div>
 
-    <div class="line"><span class="muted">Actualizado</span><span id="distWhen">—</span></div>
+    <div class="line"><span class="muted">Actualizado</span><span id="distWhen">—"}</span></div>
   `;
 
   setEnabled(true);
@@ -741,7 +750,7 @@ function updateCompassUI(){
 }
 
 /* ==========================
-   ✅ Ajuste manual por pulsación larga (como ya lo tienes)
+   ✅ Ajuste manual por pulsación larga
    ========================== */
 
 (function init(){
@@ -801,7 +810,7 @@ function updateCompassUI(){
 
     const raw = prompt(
       "Introduce nuevas coordenadas (lat,lon):",
-      park.lat + "," + park.lon
+      ""
     );
 
     if(raw === null) return;
